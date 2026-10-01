@@ -70,10 +70,14 @@ export function getUserProfile () {
           numericRegex.test(code) ||
           booleanRegex.test(code)
 
-        if (!isSafe) {
+        if (!isSafe || /#{.*}/.test(code) || /[\r\n]/.test(code)) {
           throw new Error('Unsafe code execution blocked')
         }
-        username = eval(code) // eslint-disable-line no-eval
+        const evaluated = eval(code) // eslint-disable-line no-eval
+        if (typeof evaluated === 'string' && (/#{.*}/.test(evaluated) || /[\r\n]/.test(evaluated))) {
+          throw new Error('Unsafe code execution blocked')
+        }
+        username = '\\' + evaluated
       } catch (err) {
         username = '\\' + username
       }
@@ -85,6 +89,7 @@ export function getUserProfile () {
     const theme = themes[themeKey] || themes['bluegrey-lightgreen']
 
     if (username) {
+      username = username.replace(/[\r\n]/g, '').replace(/(?<!\\)#{/g, '\\#{')
       template = template.replace(/_username_/g, username)
     }
     template = template.replace(/_emailHash_/g, security.hash(user?.email))
